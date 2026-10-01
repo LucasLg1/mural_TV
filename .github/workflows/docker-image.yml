@@ -7,8 +7,8 @@ on:
 
 env:
   KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_HML }}
-  NAMESPACE: mural-tv-hml
-  IMAGE_NAME: devroboflex/mural-tv
+  NAMESPACE: thalamus-mural-tv-hml
+  IMAGE_NAME: devroboflex/thalamus-mural-tv
   IMAGE_TAG: hml
 
 jobs:
@@ -43,5 +43,5 @@ jobs:
 
       - name: Reiniciar deployment
         run: |
-          kubectl -n "$NAMESPACE" rollout restart deployment/mural-tv
-          kubectl -n "$NAMESPACE" rollout status deployment/mural-tv --timeout=5m
+          kubectl -n "$NAMESPACE" rollout restart deployment/thalamus-mural-tv
+          kubectl -n "$NAMESPACE" rollout status deployment/thalamus-mural-tv --timeout=5m
