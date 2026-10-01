@@ -7,7 +7,7 @@ on:
 
 env:
   KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_HML }}
-  NAMESPACE: thalamus-mural-tv-hml
+  NAMESPACE: thalamus-hml
   IMAGE_NAME: devroboflex/thalamus-mural-tv
   IMAGE_TAG: hml
 
