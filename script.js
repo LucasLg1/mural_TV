@@ -422,9 +422,8 @@
   function workCard(detail = false) {
     const data = config.tempoDeCasa || {};
     const people = data.pessoas || [];
-    const compactClass = !detail && people.length > 8 ? "is-compact" : "";
     return `
-      <section class="card card-pad work-card ${detail ? "large-card" : ""} ${compactClass}">
+      <section class="card card-pad work-card ${detail ? "large-card" : ""}">
         <div class="card-confetti" aria-hidden="true">${createCardConfettiMarkup(detail ? 24 : 14)}</div>
         <h2 class="card-title">${escapeHtml(data.tituloDestaque || "TEMPO")} <span>DE CASA</span></h2>
         <p class="subtitle">${escapeHtml(data.subtitulo || "")}</p>
