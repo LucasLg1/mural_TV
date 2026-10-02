@@ -9,6 +9,10 @@ window.MURAL_CONFIG = {
   // Use true apenas se precisar reduzir efeitos em dispositivos mais fracos.
   performanceMode: false,
 
+  performance: {
+    starCount: 20
+  },
+
   integracaoApi: {
     ativa: true,
     endpointAniversariantes: "https://api.thalamus.ind.br/api/pessoas/aniversariantes",

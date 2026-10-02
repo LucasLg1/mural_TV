@@ -8,9 +8,12 @@
   const isDebug = queryParams.get("debug") === "1";
   const debugBirthday = queryParams.get("debugAniversario")?.trim() || "";
   const activeIntervals = new Set();
-  let screenTimeout = null;
+  const screenTimer = { id: null, callback: null, deadline: 0, remaining: 0 };
+  const transitionTimer = { id: null, callback: null, deadline: 0, remaining: 0 };
   let detailIndex = 0;
   let apiRefreshInterval = null;
+  const qrImageCache = new Map();
+  const qrWarnings = new Set();
   const apiState = {
     status: "aguardando",
     lastUpdate: null,
@@ -24,6 +27,10 @@
 
   const performanceMode = config.performanceMode === true;
   document.documentElement.classList.toggle("tv-performance", performanceMode);
+  const configuredStarCount = Number(config.performance?.starCount);
+  const starCount = Number.isFinite(configuredStarCount)
+    ? Math.min(70, Math.max(0, Math.round(configuredStarCount)))
+    : 20;
 
   const timing = {
     overviewDurationMs: Number(config.timing?.overviewDurationMs) || 60000,
@@ -230,7 +237,16 @@
 
   function refreshScreenAfterApiUpdate() {
     if (app.querySelector(".overview-screen")) {
-      renderOverview();
+      const replacements = [
+        [".birthday-card", () => birthdayCard()],
+        [".work-card", () => workCard()],
+        [".cipa-card", cipaCard]
+      ];
+      replacements.forEach(([selector, render]) => {
+        app.querySelectorAll(selector).forEach((card) => {
+          card.outerHTML = render();
+        });
+      });
       return;
     }
     if (app.querySelector(".celebration-screen")) {
@@ -273,7 +289,7 @@
     const extension = String(src).match(/\.([a-z0-9]+)(?:[?#].*)?$/i)?.[1]?.toLowerCase();
     const mimeTypes = { mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", ogg: "video/ogg", mov: "video/quicktime" };
     const type = mimeTypes[extension] || "video/mp4";
-    return `<video class="${escapeHtml(className)}" autoplay muted loop playsinline preload="metadata" disablepictureinpicture aria-label="${escapeHtml(label)}"><source src="${source}" type="${type}"></video>`;
+    return `<video class="${escapeHtml(className)}" autoplay muted loop playsinline webkit-playsinline preload="metadata" disablepictureinpicture aria-label="${escapeHtml(label)}"><source src="${source}" type="${type}"></video>`;
   }
 
   function getPrimaryMedia(news) {
@@ -415,7 +431,7 @@
     }).join("");
   }
 
-  function createCardConfettiMarkup(amount = 24) {
+  function createCardConfettiMarkup(amount = 18) {
     const colors = ["#ffd447", "#ff6b6b", "#41c7a2", "#42a5f5", "#a86ae3", "#f28c28"];
     return Array.from({ length: amount }, (_, index) => {
       const left = (index * 37) % 101;
@@ -432,7 +448,7 @@
     const birthdaysToday = getActiveBirthdays();
     return `
       <section class="card card-pad birthday-card ${detail ? "large-card" : ""} ${birthdaysToday.length ? "has-birthday-today" : ""}" data-birthdays-today="${birthdaysToday.length}">
-        <div class="card-confetti" aria-hidden="true">${createCardConfettiMarkup(detail ? 24 : 14)}</div>
+        <div class="card-confetti" aria-hidden="true">${createCardConfettiMarkup(detail ? 18 : 10)}</div>
         <div class="eyebrow">${escapeHtml(data.mesReferencia || "")}</div>
         <h2 class="card-title">Aniversariantes <span>do Mês</span></h2>
         <div class="people-grid">
@@ -446,7 +462,7 @@
     const people = data.pessoas || [];
     return `
       <section class="card card-pad work-card ${detail ? "large-card" : ""}">
-        <div class="card-confetti" aria-hidden="true">${createCardConfettiMarkup(detail ? 24 : 14)}</div>
+        <div class="card-confetti" aria-hidden="true">${createCardConfettiMarkup(detail ? 18 : 10)}</div>
         <h2 class="card-title">${escapeHtml(data.tituloDestaque || "TEMPO")} <span>DE CASA</span></h2>
         <p class="subtitle">${escapeHtml(data.subtitulo || "")}</p>
         <div class="people-grid">
@@ -482,13 +498,19 @@
   }
 
   function renderQrItems(items) {
-    return items.map((item) => `
-      <div class="qr-item">
-        <div class="qr-box" data-qr="${escapeHtml(item.url)}">
-          <a class="qr-fallback" href="${safeUrl(item.url)}" target="_blank" rel="noopener">ABRIR</a>
-        </div>
-        <span>${escapeHtml(item.legenda)}</span>
-      </div>`).join("");
+    return items.map((item) => {
+      const url = safeUrl(item.url);
+      const label = escapeHtml(item.legenda || "conteúdo");
+      return `
+        <div class="qr-item">
+          <a class="qr-link" href="${url}" target="_blank" rel="noopener" aria-label="Abrir ${label}">
+            <span class="qr-box" data-qr="${url}">
+              <span class="qr-fallback">ABRIR</span>
+            </span>
+          </a>
+          <span>${label}</span>
+        </div>`;
+    }).join("");
   }
 
   function cipaCard() {
@@ -731,7 +753,7 @@
     updatePlaybackForVisibility();
   }
 
-  function createConfettiMarkup(amount = 48) {
+  function createConfettiMarkup(amount = 32) {
     const colors = ["#ffd447", "#ff6b6b", "#41c7a2", "#42a5f5", "#a86ae3", "#ffffff"];
     return Array.from({ length: amount }, (_, index) => {
       const left = ((index * 37) % 101) + ((index % 3) * 0.17);
@@ -856,56 +878,158 @@
   function hydrateQrCodes() {
     document.querySelectorAll(".qr-box[data-qr]").forEach((box) => {
       const url = box.dataset.qr;
-      if (!url || typeof window.QRCode !== "function") return;
-      box.replaceChildren();
-      new window.QRCode(box, {
-        text: url,
-        width: 160,
-        height: 160,
-        colorDark: "#071b2c",
-        colorLight: "#ffffff",
-        correctLevel: window.QRCode.CorrectLevel.M
-      });
+      if (box.dataset.qrState || !url) return;
+
+      const warnOnce = (key, message, error) => {
+        if (qrWarnings.has(key)) return;
+        qrWarnings.add(key);
+        console.warn(`[MURAL QR] ${message}${error?.message ? ` (${error.message})` : ""}`);
+      };
+
+      const showCachedImage = (dataUrl) => {
+        const image = document.createElement("img");
+        image.className = "qr-generated";
+        image.src = dataUrl;
+        image.alt = "";
+        image.setAttribute("aria-hidden", "true");
+        while (box.firstChild) box.removeChild(box.firstChild);
+        box.appendChild(image);
+        box.dataset.qrState = "ready";
+      };
+
+      const cachedImage = qrImageCache.get(url);
+      if (cachedImage) {
+        showCachedImage(cachedImage);
+        return;
+      }
+
+      if (typeof window.QRCode !== "function") {
+        box.dataset.qrState = "fallback";
+        warnOnce("library", "Biblioteca local indisponível; mantendo o link de fallback.");
+        return;
+      }
+
+      try {
+        const staging = document.createElement("span");
+        new window.QRCode(staging, {
+          text: url,
+          width: 160,
+          height: 160,
+          colorDark: "#071b2c",
+          colorLight: "#ffffff",
+          correctLevel: window.QRCode.CorrectLevel.M
+        });
+
+        const canvas = staging.querySelector("canvas");
+        if (canvas && typeof canvas.toDataURL === "function") {
+          const dataUrl = canvas.toDataURL("image/png");
+          qrImageCache.set(url, dataUrl);
+          showCachedImage(dataUrl);
+          return;
+        }
+
+        if (!staging.firstChild) throw new Error("nenhum elemento foi gerado");
+        while (box.firstChild) box.removeChild(box.firstChild);
+        while (staging.firstChild) box.appendChild(staging.firstChild);
+        box.dataset.qrState = "ready";
+      } catch (error) {
+        box.dataset.qrState = "fallback";
+        warnOnce("generation", "Não foi possível gerar um QR code; mantendo o link de fallback.", error);
+      }
+    });
+  }
+
+  function clearManagedTimer(timer) {
+    if (timer.id) clearTimeout(timer.id);
+    timer.id = null;
+    timer.callback = null;
+    timer.deadline = 0;
+    timer.remaining = 0;
+  }
+
+  function startManagedTimer(timer) {
+    if (!timer.callback || timer.id || document.hidden) return;
+    timer.deadline = Date.now() + timer.remaining;
+    timer.id = setTimeout(() => {
+      const callback = timer.callback;
+      timer.id = null;
+      timer.callback = null;
+      timer.deadline = 0;
+      timer.remaining = 0;
+      callback();
+    }, timer.remaining);
+  }
+
+  function scheduleManagedTimer(timer, callback, delay) {
+    clearManagedTimer(timer);
+    timer.callback = callback;
+    timer.remaining = Math.max(0, Number(delay) || 0);
+    startManagedTimer(timer);
+  }
+
+  function pauseManagedTimer(timer) {
+    if (!timer.id) return;
+    timer.remaining = Math.max(0, timer.deadline - Date.now());
+    clearTimeout(timer.id);
+    timer.id = null;
+    timer.deadline = 0;
+  }
+
+  function clearCarouselTimers() {
+    activeIntervals.forEach((interval) => clearInterval(interval));
+    activeIntervals.clear();
+    document.querySelectorAll("[data-carousel-running]").forEach((carousel) => {
+      carousel.removeAttribute("data-carousel-running");
     });
   }
 
   function clearRuntimeTimers() {
-    activeIntervals.forEach((interval) => clearInterval(interval));
-    activeIntervals.clear();
-    if (screenTimeout) clearTimeout(screenTimeout);
-    screenTimeout = null;
+    clearCarouselTimers();
+    clearManagedTimer(screenTimer);
+    clearManagedTimer(transitionTimer);
   }
 
   function startCarousel(container) {
     const images = [...container.querySelectorAll(".carousel-image")];
-    if (images.length < 2) return;
-    let current = 0;
+    if (document.hidden || images.length < 2 || container.dataset.carouselRunning === "true") return;
+    let current = Math.max(0, images.findIndex((image) => image.classList.contains("active")));
     let changing = false;
+    container.dataset.carouselRunning = "true";
     const interval = setInterval(async () => {
       if (changing) return;
       changing = true;
       const next = (current + 1) % images.length;
       try {
-        await images[next].decode?.();
+        if (typeof images[next].decode === "function") await images[next].decode();
       } catch {
         // A imagem ainda pode ser exibida normalmente pelo navegador.
+      } finally {
+        if (
+          !document.hidden &&
+          container.isConnected &&
+          container.dataset.carouselRunning === "true"
+        ) {
+          images[current].classList.remove("active");
+          current = next;
+          images[current].classList.add("active");
+        }
+        changing = false;
       }
-      images[current].classList.remove("active");
-      current = next;
-      images[current].classList.add("active");
-      changing = false;
     }, timing.carouselIntervalMs);
     activeIntervals.add(interval);
   }
 
   function startVisibleCarousels() {
+    if (document.hidden) return;
     document.querySelectorAll(".carousel").forEach(startCarousel);
   }
 
   function transitionTo(renderFn, afterTransition) {
+    clearManagedTimer(screenTimer);
+    clearManagedTimer(transitionTimer);
     app.classList.add("is-fading");
-    setTimeout(() => {
-      clearRuntimeTimers();
+    scheduleManagedTimer(transitionTimer, () => {
+      clearCarouselTimers();
       renderFn();
       requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove("is-fading")));
       afterTransition?.();
@@ -913,7 +1037,7 @@
   }
 
   function scheduleOverviewEnd() {
-    screenTimeout = setTimeout(() => {
+    scheduleManagedTimer(screenTimer, () => {
       detailIndex = 0;
       const birthdaysToday = getActiveBirthdays();
       if (birthdaysToday.length) {
@@ -935,11 +1059,11 @@
   }
 
   function scheduleCelebrationEnd() {
-    screenTimeout = setTimeout(showFirstDetail, timing.celebracaoDurationMs);
+    scheduleManagedTimer(screenTimer, showFirstDetail, timing.celebracaoDurationMs);
   }
 
   function scheduleDetailEnd() {
-    screenTimeout = setTimeout(() => {
+    scheduleManagedTimer(screenTimer, () => {
       detailIndex += 1;
       if (detailIndex < DETAIL_SLIDES.length) {
         transitionTo(
@@ -962,7 +1086,7 @@
     if (!isDebug) scheduleOverviewEnd();
   }
 
-  function createStars(amount = 100) {
+  function createStars(amount = 20) {
     const stars = document.getElementById("stars");
     const fragment = document.createDocumentFragment();
     for (let index = 0; index < amount; index += 1) {
@@ -1012,17 +1136,27 @@
 
   function updatePlaybackForVisibility() {
     document.documentElement.classList.toggle("page-hidden", document.hidden);
+    if (document.hidden) {
+      pauseManagedTimer(screenTimer);
+      pauseManagedTimer(transitionTimer);
+      clearCarouselTimers();
+    } else {
+      startManagedTimer(transitionTimer);
+      startManagedTimer(screenTimer);
+      startVisibleCarousels();
+    }
     document.querySelectorAll("video").forEach((video) => {
       if (document.hidden) {
         video.pause();
       } else {
-        video.play().catch(() => {});
+        const playback = video.play();
+        if (playback && typeof playback.catch === "function") playback.catch(() => {});
       }
     });
   }
 
   document.addEventListener("visibilitychange", updatePlaybackForVisibility);
-  createStars(performanceMode ? 20 : 70);
+  createStars(starCount);
   setupDebugPanel();
   startCycle();
   loadPeopleFromApi();
