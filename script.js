@@ -352,11 +352,9 @@
     const admission = new Date(`${person.admissao}T12:00:00`);
     const today = new Date();
     if (Number.isNaN(admission.getTime())) return 0;
+    // O ano completa no mês da admissão, em qualquer dia desse mês.
     let years = today.getFullYear() - admission.getFullYear();
-    const anniversaryPassed =
-      today.getMonth() > admission.getMonth() ||
-      (today.getMonth() === admission.getMonth() && today.getDate() >= admission.getDate());
-    if (!anniversaryPassed) years -= 1;
+    if (today.getMonth() < admission.getMonth()) years -= 1;
     return Math.max(0, years);
   }
 
