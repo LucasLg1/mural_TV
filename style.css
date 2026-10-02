@@ -342,6 +342,30 @@ body { color: var(--ink); }
 .qr-box img, .qr-box canvas { width: 100% !important; height: 100% !important; }
 .qr-fallback { color: #0a67a8; font-size: .48vw; font-weight: 900; text-decoration: none; }
 .qr-item span { display: block; margin-top: .4vh; font-size: clamp(7px, .44vw, 9px); font-weight: 800; line-height: 1.05; }
+.values-survey {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: .8vh;
+  padding-top: .7vh;
+  border-top: 1px solid #d6e0e8;
+  text-align: center;
+}
+.values-survey p { margin-bottom: .65vh; text-align: left; }
+.values-survey img {
+  display: block;
+  width: clamp(50px, 4.4vw, 85px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  border: 3px solid white;
+  box-shadow: 0 0 0 1px #cbd5df;
+}
+.values-survey strong {
+  margin-top: .4vh;
+  color: #0a67a8;
+  font-size: clamp(6px, .4vw, 8px);
+  line-height: 1.1;
+}
 
 .cipa-body { padding: .7vh .75vw 6.2vh; }
 .cipa-body .eyebrow { margin-bottom: .45vh; color: var(--green); text-align: center; }

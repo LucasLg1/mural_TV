@@ -71,7 +71,12 @@ window.MURAL_CONFIG = {
     qrCodes: [
       { legenda: "Política de Conduta Ética", url: "https://exemplo.com/politica-etica" },
       { legenda: "Canal de Ética", url: "https://exemplo.com/canal-etica" }
-    ]
+    ],
+    pesquisa: {
+      texto: "Olá, colaborador(a)! Pedimos alguns minutinhos da sua atenção para responder a esta pesquisa. Sua participação é muito importante para entendermos sua percepção sobre a empresa e identificarmos oportunidades de melhoria. Fique tranquilo(a): esta pesquisa é totalmente anônima. Não é possível identificar quem respondeu, e as informações serão utilizadas apenas para apoiar ações de melhoria no ambiente de trabalho. Contamos com a sua sinceridade. Obrigado pela participação!",
+      qrCodeImagem: "assets/qr-pesquisa-colaborador.png",
+      legenda: "Aponte a câmera e responda à pesquisa"
+    }
   },
 
   cipa: {
