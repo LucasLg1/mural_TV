@@ -114,11 +114,10 @@
           .flatMap((payload) => payload?.aniversariantes || [])
           .map((person) => [Number(person.id), person])
       );
-      const fallbackById = new Map((config.cipa.integrantes || []).map((person) => [Number(person.id), person]));
 
       config.cipa.integrantes = members.map((member) => {
         const person = peopleById.get(Number(member.id));
-        if (!person) return fallbackById.get(Number(member.id));
+        if (!person) return null;
         return {
           id: person.id,
           nome: String(person.nome || "").trim(),
@@ -126,7 +125,7 @@
           setor: person.setor_nome || "",
           cargo: person.cargo_nome || ""
         };
-      }).filter(Boolean);
+      }).filter((person) => person?.nome);
       return true;
     } catch (error) {
       console.warn(`Não foi possível atualizar a CIPA pela API (${error.message}).`);
@@ -189,11 +188,12 @@
       refreshScreenAfterApiUpdate();
       return true;
     } catch (error) {
-      apiState.status = apiConfig.usarDadosLocaisComoFallback === false ? "erro" : "fallback local";
+      apiState.status = "erro";
       apiState.message = error.name === "AbortError" ? "tempo limite excedido" : error.message;
-      if (apiConfig.usarDadosLocaisComoFallback === false) {
+      if (!apiState.lastUpdate) {
         config.aniversariantes.pessoas = [];
         config.tempoDeCasa.pessoas = [];
+        config.cipa.integrantes = [];
         refreshScreenAfterApiUpdate();
       }
       console.warn(`Não foi possível atualizar os dados da API (${apiState.message}).`);
@@ -352,11 +352,9 @@
     const admission = new Date(`${person.admissao}T12:00:00`);
     const today = new Date();
     if (Number.isNaN(admission.getTime())) return 0;
+    // O ano completa no mês da admissão, em qualquer dia desse mês.
     let years = today.getFullYear() - admission.getFullYear();
-    const anniversaryPassed =
-      today.getMonth() > admission.getMonth() ||
-      (today.getMonth() === admission.getMonth() && today.getDate() >= admission.getDate());
-    if (!anniversaryPassed) years -= 1;
+    if (today.getMonth() < admission.getMonth()) years -= 1;
     return Math.max(0, years);
   }
 
@@ -422,9 +420,8 @@
   function workCard(detail = false) {
     const data = config.tempoDeCasa || {};
     const people = data.pessoas || [];
-    const compactClass = !detail && people.length > 8 ? "is-compact" : "";
     return `
-      <section class="card card-pad work-card ${detail ? "large-card" : ""} ${compactClass}">
+      <section class="card card-pad work-card ${detail ? "large-card" : ""}">
         <div class="card-confetti" aria-hidden="true">${createCardConfettiMarkup(detail ? 24 : 14)}</div>
         <h2 class="card-title">${escapeHtml(data.tituloDestaque || "TEMPO")} <span>DE CASA</span></h2>
         <p class="subtitle">${escapeHtml(data.subtitulo || "")}</p>

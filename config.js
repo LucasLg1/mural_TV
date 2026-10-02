@@ -13,8 +13,7 @@ window.MURAL_CONFIG = {
     mesAutomatico: true,       // true = usa o mês atual da TV
     mes: 9,                    // usado apenas quando mesAutomatico for false
     atualizarACadaMs: 3600000, // consulta novamente a cada 1 hora
-    timeoutMs: 8000,
-    usarDadosLocaisComoFallback: true
+    timeoutMs: 8000
   },
 
   timing: {
@@ -49,38 +48,17 @@ window.MURAL_CONFIG = {
   ],
 
   aniversariantes: {
-    mesReferencia: "SETEMBRO",
+    mesReferencia: "",
     tituloParabens: "Hoje é aniversário de",
     tituloParabensPlural: "Hoje celebramos os aniversários de",
     mensagemParabens: "Toda a equipe Roboflex deseja um feliz aniversário! 🎂",
-    pessoas: [
-      { id: 19, nome: "Fábio Henrique Resende Vieira", dia: 5, foto: "pessoa_img/fabioHenrique.jpg" },
-      { id: 159, nome: "Anna Carolina Gomes Silva Antônio", dia: 6, foto: "pessoa_img/68a30edbd5541.png" },
-      { id: 188, nome: "João Victor Proença de Souza", dia: 6, foto: "pessoa_img/6985f49dd3e6e.png" },
-      { id: 139, nome: "Ingrid Rodrigues dos Santos Alves", dia: 7, foto: "pessoa_img/67d03f2daeed2.png" },
-      { id: 18, nome: "Fabiano Gomes Chaves", dia: 13, foto: "pessoa_img/fabianoGomes.jpg" },
-      { id: 48, nome: "Natalie da Costa Vieira", dia: 13, foto: "pessoa_img/natalieDias.jpg" },
-      { id: 204, nome: "Peterson Gabriel da Cruz Costa das Dores", dia: 13, foto: "pessoa_img/69c2bec038472.png" },
-      { id: 224, nome: "Guilherme Henrique Durães Ferreira", dia: 17, foto: "pessoa_img/6a5a101a826d0.png" },
-      { id: 222, nome: "Ariane Fernandes Pereira", dia: 21, foto: "pessoa_img/6a3198f6a5e5b.png" },
-      { id: 216, nome: "Vander Luiz de Araújo Carneiro", dia: 22, foto: "pessoa_img/69fdd38a56778.png" },
-      { id: 21, nome: "Fernanda Mozzer Arantes", dia: 28, foto: "pessoa_img/fernandaMozzer.jpg" },
-      { id: 74, nome: "Cristiane Mozzer Arantes", dia: 29, foto: "pessoa_img/cristianeMozzer.jpg" }
-    ]
+    pessoas: []
   },
 
   tempoDeCasa: {
     tituloDestaque: "TEMPO",
     subtitulo: "Histórias que crescem junto com a Roboflex.",
-    pessoas: [
-      { id: 70, nome: "Emerson Mozzer", admissao: "2022-09-01", foto: "pessoa_img/emersonMozzer.jpg" },
-      { id: 56, nome: "Raiane de Cassia Baldez Mendes", admissao: "2022-09-01", foto: "pessoa_img/raianeBaldez.jpg" },
-      { id: 177, nome: "Reinaldo Antônio de Oliveira", admissao: "2025-09-08", foto: "pessoa_img/6985f773125c1.png" },
-      { id: 67, nome: "Alessandro José Ribeiro da Silveira", admissao: "2023-09-15", foto: "pessoa_img/alessandroJose.jpg" },
-      { id: 25, nome: "Gabrielle Inez de Freitas", admissao: "2021-09-16", foto: "pessoa_img/gabrielleFreitas.jpg" },
-      { id: 47, nome: "Milena Moura dos Reis", admissao: "2021-09-16", foto: "pessoa_img/milenaMoura.jpg" },
-      { id: 48, nome: "Natalie da Costa Vieira", admissao: "2022-09-20", foto: "pessoa_img/natalieDias.jpg" }
-    ]
+    pessoas: []
   },
 
   valoresEmpresa: {
@@ -105,12 +83,7 @@ window.MURAL_CONFIG = {
       { id: 130, mes: 4 },
       { id: 121, mes: 12 }
     ],
-    integrantes: [
-      { id: 113, nome: "Nádia Moreira de Albuquerque", foto: "pessoa_img/67d0407eb3563.png" },
-      { id: 212, nome: "Felipe Ramon Ferreira Palhares", foto: "pessoa_img/69fdd1f7ef8fc.png" },
-      { id: 130, nome: "João Victor Alves Almeida Portela", foto: "pessoa_img/67d03f62c4b4b.png" },
-      { id: 121, nome: "Gabriel Felipe da Silva", foto: "pessoa_img/67d03f15636ad.png" }
-    ],
+    integrantes: [],
     chamada: {
       titulo: "PRECISOU DA CIPA?",
       texto: "FALE COM ELES E PASSE SUAS SUGESTÕES"
