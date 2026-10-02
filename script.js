@@ -447,6 +447,12 @@
         <div class="values-body">
           ${(data.paragrafos || []).map((text) => `<p>${escapeHtml(text)}</p>`).join("")}
           <div class="qr-row">${renderQrItems(data.qrCodes || [])}</div>
+          ${data.pesquisa ? `
+            <div class="values-survey">
+              <p>${escapeHtml(data.pesquisa.texto || "")}</p>
+              <img src="${safeUrl(data.pesquisa.qrCodeImagem)}" alt="QR Code da pesquisa para colaboradores">
+              <strong>${escapeHtml(data.pesquisa.legenda || "")}</strong>
+            </div>` : ""}
         </div>
       </section>`;
   }
