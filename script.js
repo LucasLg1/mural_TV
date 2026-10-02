@@ -22,12 +22,17 @@
     throw new Error("MURAL_CONFIG não encontrado. Verifique se config.js foi carregado.");
   }
 
+  const performanceMode = config.performanceMode === true;
+  document.documentElement.classList.toggle("tv-performance", performanceMode);
+
   const timing = {
     overviewDurationMs: Number(config.timing?.overviewDurationMs) || 60000,
     detailSlideDurationMs: Number(config.timing?.detailSlideDurationMs) || 60000,
     celebracaoDurationMs: Number(config.timing?.celebracaoDurationMs) || 20000,
     carouselIntervalMs: Number(config.timing?.carouselIntervalMs) || 5000,
-    fadeTransitionMs: Number(config.timing?.fadeTransitionMs) || 800
+    fadeTransitionMs: performanceMode
+      ? Math.min(Number(config.timing?.fadeTransitionMs) || 800, 300)
+      : Number(config.timing?.fadeTransitionMs) || 800
   };
 
   document.documentElement.style.setProperty("--fade-ms", `${timing.fadeTransitionMs}ms`);
@@ -47,11 +52,30 @@
   }
 
   function buildStorageUrl(path) {
-    const value = String(path || "").trim();
+    let value = String(path || "").trim();
+
     if (!value) return "";
-    if (/^https?:\/\//i.test(value)) return value;
-    const base = String(config.integracaoApi?.baseImagens || "").replace(/\/+$/, "");
-    return `${base}/${value.replace(/^\/+/, "")}`;
+
+    if (/^https?:\/\//i.test(value)) {
+      return value;
+    }
+
+    const base = String(
+      config.integracaoApi?.baseImagens || ""
+    ).replace(/\/+$/, "");
+
+    value = value.replace(/^\/+/, "");
+
+    // Evita duplicar "storage/"
+    if (value.startsWith("storage/")) {
+      value = value.substring(8);
+    }
+
+    const url = `${base}/${value}`;
+
+    console.log("[MURAL FOTO]", url);
+
+    return url;
   }
 
   function normalizeApiBirthday(person, month) {
@@ -240,7 +264,7 @@
     const source = /^pessoa_img\//i.test(String(src || ""))
       ? buildStorageUrl(src)
       : src;
-    return `<img class="${escapeHtml(className)}" src="${safeUrl(source) || fallbackImage(alt)}" alt="${escapeHtml(alt)}" onerror="handleImageError(this, '${escapeHtml(String(alt).replaceAll("'", ""))}')">`;
+    return `<img class="${escapeHtml(className)}" src="${safeUrl(source) || fallbackImage(alt)}" alt="${escapeHtml(alt)}" decoding="async" onerror="handleImageError(this, '${escapeHtml(String(alt).replaceAll("'", ""))}')">`;
   }
 
   function videoTag(src, label, className = "") {
@@ -513,6 +537,10 @@
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  function getCurrentDateLabel() {
+    return new Intl.DateTimeFormat("pt-BR").format(new Date());
+  }
+
   function monthIndex(month) {
     return monthNames.findIndex((name) => normalize(name) === normalize(month));
   }
@@ -697,7 +725,7 @@
         <div class="overview-grid">
           ${cardsMarkup}
         </div>
-        <div class="updated-at">Atualizado dia ${escapeHtml(config.atualizadoEm || "")}</div>
+        <div class="updated-at">Atualizado dia ${escapeHtml(getCurrentDateLabel())}</div>
       </section>`;
     hydrateQrCodes();
     updatePlaybackForVisibility();
@@ -852,10 +880,20 @@
     const images = [...container.querySelectorAll(".carousel-image")];
     if (images.length < 2) return;
     let current = 0;
-    const interval = setInterval(() => {
+    let changing = false;
+    const interval = setInterval(async () => {
+      if (changing) return;
+      changing = true;
+      const next = (current + 1) % images.length;
+      try {
+        await images[next].decode?.();
+      } catch {
+        // A imagem ainda pode ser exibida normalmente pelo navegador.
+      }
       images[current].classList.remove("active");
-      current = (current + 1) % images.length;
+      current = next;
       images[current].classList.add("active");
+      changing = false;
     }, timing.carouselIntervalMs);
     activeIntervals.add(interval);
   }
@@ -984,7 +1022,7 @@
   }
 
   document.addEventListener("visibilitychange", updatePlaybackForVisibility);
-  createStars(70);
+  createStars(performanceMode ? 20 : 70);
   setupDebugPanel();
   startCycle();
   loadPeopleFromApi();

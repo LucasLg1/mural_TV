@@ -1065,6 +1065,56 @@ body { color: var(--ink); }
   animation-play-state: paused !important;
 }
 
+/*
+ * Smart TVs costumam ter pouca capacidade de composição gráfica. Neste modo,
+ * mantemos as transições de conteúdo e retiramos efeitos decorativos contínuos.
+ */
+.tv-performance .aurora {
+  animation: none;
+  filter: blur(24px);
+  will-change: auto;
+}
+
+.tv-performance .star {
+  animation: none;
+  opacity: .35;
+}
+
+.tv-performance .card-confetti {
+  display: none;
+}
+
+.tv-performance .birthday-person.status-hoje .avatar-wrap::before,
+.tv-performance .birthday-float,
+.tv-performance .safety-number,
+.tv-performance .attention-card .header-icon,
+.tv-performance .celebration-glow,
+.tv-performance .celebration-kicker,
+.tv-performance .celebration-avatar-wrap > span {
+  animation: none;
+}
+
+.tv-performance .detail-header,
+.tv-performance .debug-panel {
+  backdrop-filter: none;
+}
+
+.tv-performance .card,
+.tv-performance .detail-panel,
+.tv-performance .detail-header {
+  box-shadow: 0 .5vh 1.4vh rgba(0, 8, 24, .2);
+}
+
+.tv-performance .carousel-image {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+.tv-performance .carousel-image:not(.active) {
+  visibility: hidden;
+}
+
 @media (max-aspect-ratio: 4/3) {
   .screen { padding: 8px; }
   .overview-grid { gap: 6px; }

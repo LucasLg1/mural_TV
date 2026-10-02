@@ -6,6 +6,9 @@
 window.MURAL_CONFIG = {
   atualizadoEm: "25/09/2026",
 
+  // Use true apenas se precisar reduzir efeitos em dispositivos mais fracos.
+  performanceMode: false,
+
   integracaoApi: {
     ativa: true,
     endpointAniversariantes: "https://api.thalamus.ind.br/api/pessoas/aniversariantes",
