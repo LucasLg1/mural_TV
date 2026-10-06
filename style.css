@@ -104,6 +104,23 @@ body { color: var(--ink); }
 
 #app.is-fading { opacity: 0; }
 
+.screen-slot {
+  width: 100%;
+  height: 100%;
+}
+
+.screen-slot[hidden] {
+  display: none !important;
+}
+
+.screen-slot.is-preparing {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .screen {
   width: 100%;
   height: 100%;
