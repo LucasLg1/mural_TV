@@ -216,7 +216,7 @@
       apiState.status = "conectado";
       apiState.lastUpdate = new Date();
       apiState.message = `${config.aniversariantes.pessoas.length} aniversariantes`;
-      refreshScreenAfterApiUpdate();
+      await refreshPeopleScreens();
       return true;
     } catch (error) {
       apiState.status = "erro";
@@ -225,33 +225,13 @@
         config.aniversariantes.pessoas = [];
         config.tempoDeCasa.pessoas = [];
         config.cipa.integrantes = [];
-        refreshScreenAfterApiUpdate();
+        await refreshPeopleScreens();
       }
       console.warn(`Não foi possível atualizar os dados da API (${apiState.message}).`);
       return false;
     } finally {
       clearTimeout(timeout);
       setupDebugPanel();
-    }
-  }
-
-  function refreshScreenAfterApiUpdate() {
-    if (app.querySelector(".overview-screen")) {
-      const replacements = [
-        [".birthday-card", () => birthdayCard()],
-        [".work-card", () => workCard()],
-        [".cipa-card", cipaCard]
-      ];
-      replacements.forEach(([selector, render]) => {
-        app.querySelectorAll(selector).forEach((card) => {
-          card.outerHTML = render();
-        });
-      });
-      return;
-    }
-    if (app.querySelector(".celebration-screen")) {
-      const birthdaysToday = getActiveBirthdays();
-      if (birthdaysToday.length) renderBirthdayCelebration(birthdaysToday);
     }
   }
 
@@ -289,7 +269,7 @@
     const extension = String(src).match(/\.([a-z0-9]+)(?:[?#].*)?$/i)?.[1]?.toLowerCase();
     const mimeTypes = { mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", ogg: "video/ogg", mov: "video/quicktime" };
     const type = mimeTypes[extension] || "video/mp4";
-    return `<video class="${escapeHtml(className)}" autoplay muted loop playsinline webkit-playsinline preload="metadata" disablepictureinpicture aria-label="${escapeHtml(label)}"><source src="${source}" type="${type}"></video>`;
+    return `<video class="${escapeHtml(className)}" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture aria-label="${escapeHtml(label)}"><source src="${source}" type="${type}"></video>`;
   }
 
   function getPrimaryMedia(news) {
@@ -742,15 +722,13 @@
       .map((item) => cardRenderers[item?.tipo]?.() || "")
       .join("");
 
-    app.innerHTML = `
+    return `
       <section class="screen overview-screen">
         <div class="overview-grid">
           ${cardsMarkup}
         </div>
         <div class="updated-at">Atualizado dia ${escapeHtml(getCurrentDateLabel())}</div>
       </section>`;
-    hydrateQrCodes();
-    updatePlaybackForVisibility();
   }
 
   function createConfettiMarkup(amount = 32) {
@@ -767,17 +745,13 @@
   }
 
   function renderBirthdayCelebration(people = getActiveBirthdays()) {
-    if (!people.length) {
-      renderOverview();
-      return;
-    }
     const birthdayData = config.aniversariantes || {};
     const names = people.map((person) => person.nome).join(", ");
     const titlePrefix = people.length > 1
       ? birthdayData.tituloParabensPlural
       : birthdayData.tituloParabens;
 
-    app.innerHTML = `
+    return `
       <section class="screen celebration-screen">
         <div class="confetti-layer" aria-hidden="true">${createConfettiMarkup()}</div>
         <div class="celebration-glow" aria-hidden="true"></div>
@@ -865,18 +839,23 @@
   ];
 
   function renderDetailSlide(slide, index) {
-    app.innerHTML = `
+    return `
       <section class="screen detail-screen" data-slide="${escapeHtml(slide.id)}">
         ${detailHeader(slide.title, slide.subtitle, index)}
         <div class="detail-body">${slide.render()}</div>
       </section>`;
-    hydrateQrCodes();
-    startVisibleCarousels();
-    updatePlaybackForVisibility();
   }
 
-  function hydrateQrCodes() {
-    document.querySelectorAll(".qr-box[data-qr]").forEach((box) => {
+  function markupForScreen(id) {
+    if (id === "overview") return renderOverview();
+    if (id === "celebration") return renderBirthdayCelebration();
+    const index = DETAIL_SLIDES.findIndex((slide) => slide.id === id);
+    if (index < 0) return "";
+    return renderDetailSlide(DETAIL_SLIDES[index], index);
+  }
+
+  function hydrateQrCodes(root = document) {
+    root.querySelectorAll(".qr-box[data-qr]").forEach((box) => {
       const url = box.dataset.qr;
       if (box.dataset.qrState || !url) return;
 
@@ -1021,18 +1000,170 @@
 
   function startVisibleCarousels() {
     if (document.hidden) return;
-    document.querySelectorAll(".carousel").forEach(startCarousel);
+    const root = screenNodes.get(activeScreenId);
+    if (!root) return;
+    root.querySelectorAll(".carousel").forEach(startCarousel);
+  }
+
+  const screenNodes = new Map();
+  const screenBuilds = new Map();
+  const staleScreens = new Set();
+  let activeScreenId = "";
+  let peopleVersion = 0;
+
+  function isPeopleScreen(id) {
+    return id === "overview" || id === "pessoas" || id === "celebration";
+  }
+
+  function whenImageReady(image) {
+    if (image.complete && image.naturalWidth > 0) {
+      return image.decode?.().catch(() => {}) || Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const finish = () => resolve();
+      image.addEventListener("load", () => {
+        const decoded = image.decode?.();
+        if (decoded && typeof decoded.then === "function") decoded.then(finish).catch(finish);
+        else finish();
+      }, { once: true });
+      image.addEventListener("error", finish, { once: true });
+    });
+  }
+
+  function whenVideoReady(video) {
+    if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve();
+    video.preload = "auto";
+    const ready = new Promise((resolve) => {
+      const finish = () => resolve();
+      video.addEventListener("canplay", finish, { once: true });
+      video.addEventListener("error", finish, { once: true });
+    });
+    video.load();
+    return ready;
+  }
+
+  function whenScreenMediaReady(node, waitForVideo) {
+    const images = [...node.querySelectorAll("img")].map(whenImageReady);
+    const videos = waitForVideo ? [...node.querySelectorAll("video")].map(whenVideoReady) : [];
+    const timeoutMs = waitForVideo ? 20000 : 8000;
+    return Promise.race([
+      Promise.all([...images, ...videos]),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs))
+    ]);
+  }
+
+  function showOnly(id) {
+    activeScreenId = id;
+    screenNodes.forEach((node, key) => {
+      node.hidden = key !== id;
+    });
+    updatePlaybackForVisibility();
+    startVisibleCarousels();
+  }
+
+  async function buildScreen(id, version) {
+    if (id === "celebration" && !getActiveBirthdays().length) {
+      screenNodes.get(id)?.remove();
+      screenNodes.delete(id);
+      staleScreens.delete(id);
+      return null;
+    }
+
+    const html = markupForScreen(id);
+    if (!html) return null;
+
+    const node = document.createElement("div");
+    node.className = "screen-slot is-preparing";
+    node.dataset.screen = id;
+    node.innerHTML = html;
+    hydrateQrCodes(node);
+    app.appendChild(node);
+
+    const waitForVideo = id === "acontecimentos";
+    await whenScreenMediaReady(node, waitForVideo);
+    node.classList.remove("is-preparing");
+
+    if (isPeopleScreen(id) && version !== peopleVersion) {
+      node.remove();
+      return null;
+    }
+
+    const previous = screenNodes.get(id);
+    const wasVisible = previous ? previous.hidden === false : activeScreenId === id || (id === "overview" && !activeScreenId);
+    if (previous && previous !== node) previous.remove();
+    screenNodes.set(id, node);
+    staleScreens.delete(id);
+    node.hidden = !wasVisible;
+    if (wasVisible) activeScreenId = id;
+    return node;
+  }
+
+  function ensureScreen(id) {
+    if (screenNodes.has(id) && !staleScreens.has(id)) {
+      return Promise.resolve(screenNodes.get(id));
+    }
+    const current = screenBuilds.get(id);
+    if (current && !staleScreens.has(id)) return current;
+
+    const version = peopleVersion;
+    staleScreens.delete(id);
+    const build = buildScreen(id, version).finally(() => {
+      if (screenBuilds.get(id) === build) screenBuilds.delete(id);
+    });
+    screenBuilds.set(id, build);
+    return build;
+  }
+
+  async function refreshPeopleScreens() {
+    peopleVersion += 1;
+    ["overview", "pessoas", "celebration"].forEach((id) => {
+      staleScreens.add(id);
+      screenBuilds.delete(id);
+    });
+    if (!getActiveBirthdays().length) {
+      screenNodes.get("celebration")?.remove();
+      screenNodes.delete("celebration");
+      staleScreens.delete("celebration");
+    }
+    const ids = ["overview", "pessoas"];
+    if (getActiveBirthdays().length) ids.push("celebration");
+    await Promise.all(ids.map((id) => ensureScreen(id)));
+    if (activeScreenId === "celebration" && !screenNodes.has("celebration")) {
+      showOnly("overview");
+    } else if (activeScreenId && screenNodes.has(activeScreenId)) {
+      showOnly(activeScreenId);
+    }
+  }
+
+  function warmOtherScreens() {
+    const ids = DETAIL_SLIDES.map((slide) => slide.id);
+    if (getActiveBirthdays().length) ids.push("celebration");
+    return ids.reduce((chain, id) => chain.then(() => ensureScreen(id)), Promise.resolve());
   }
 
   function transitionTo(renderFn, afterTransition) {
+    const id = renderFn === renderOverview
+      ? "overview"
+      : "celebration";
+    transitionToScreen(id, afterTransition);
+  }
+
+  function transitionToScreen(id, afterTransition) {
     clearManagedTimer(screenTimer);
     clearManagedTimer(transitionTimer);
     app.classList.add("is-fading");
     scheduleManagedTimer(transitionTimer, () => {
-      clearCarouselTimers();
-      renderFn();
-      requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove("is-fading")));
-      afterTransition?.();
+      Promise.resolve(ensureScreen(id)).then((node) => {
+        clearCarouselTimers();
+        if (!node) {
+          app.classList.remove("is-fading");
+          afterTransition?.();
+          return;
+        }
+        showOnly(id);
+        requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove("is-fading")));
+        afterTransition?.();
+      });
     }, timing.fadeTransitionMs);
   }
 
@@ -1052,10 +1183,7 @@
   }
 
   function showFirstDetail() {
-    transitionTo(
-      () => renderDetailSlide(DETAIL_SLIDES[detailIndex], detailIndex),
-      scheduleDetailEnd
-    );
+    transitionToScreen(DETAIL_SLIDES[detailIndex].id, scheduleDetailEnd);
   }
 
   function scheduleCelebrationEnd() {
@@ -1066,24 +1194,28 @@
     scheduleManagedTimer(screenTimer, () => {
       detailIndex += 1;
       if (detailIndex < DETAIL_SLIDES.length) {
-        transitionTo(
-          () => renderDetailSlide(DETAIL_SLIDES[detailIndex], detailIndex),
-          scheduleDetailEnd
-        );
+        transitionToScreen(DETAIL_SLIDES[detailIndex].id, scheduleDetailEnd);
       } else {
-        transitionTo(renderOverview, scheduleOverviewEnd);
+        transitionToScreen("overview", scheduleOverviewEnd);
       }
     }, timing.detailSlideDurationMs);
   }
 
   function startCycle() {
-    const birthdaysToday = getActiveBirthdays();
-    if (isDebug && debugBirthday && birthdaysToday.length) {
-      renderBirthdayCelebration(birthdaysToday);
-    } else {
-      renderOverview();
-    }
-    if (!isDebug) scheduleOverviewEnd();
+    const boot = async () => {
+      if (isDebug && debugBirthday && getActiveBirthdays().length) {
+        const celebration = await ensureScreen("celebration");
+        if (celebration) showOnly("celebration");
+        return;
+      }
+      let overview = await ensureScreen("overview");
+      if (!overview) overview = await ensureScreen("overview");
+      if (!overview) return;
+      showOnly("overview");
+      if (!isDebug) scheduleOverviewEnd();
+      warmOtherScreens();
+    };
+    boot();
   }
 
   function createStars(amount = 20) {
@@ -1146,12 +1278,14 @@
       startVisibleCarousels();
     }
     document.querySelectorAll("video").forEach((video) => {
-      if (document.hidden) {
+      const slot = video.closest(".screen-slot");
+      const visible = !document.hidden && slot && slot.hidden === false;
+      if (!visible) {
         video.pause();
-      } else {
-        const playback = video.play();
-        if (playback && typeof playback.catch === "function") playback.catch(() => {});
+        return;
       }
+      const playback = video.play();
+      if (playback && typeof playback.catch === "function") playback.catch(() => {});
     });
   }
 
