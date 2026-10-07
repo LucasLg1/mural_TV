@@ -1,9 +1,20 @@
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+# production (padrão) ou staging — o workflow de homologação passa staging.
+ARG AMBIENTE=production
+RUN npx vite build --mode "$AMBIENTE"
+
 FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY index.html style.css script.js config.js /usr/share/nginx/html/
-COPY assets/ /usr/share/nginx/html/assets/
-COPY libs/ /usr/share/nginx/html/libs/
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 

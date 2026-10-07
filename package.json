@@ -1,0 +1,26 @@
+{
+  "name": "thalamus-mural-tv",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:staging": "vite build --mode staging",
+    "preview": "vite preview",
+    "test": "node --test tests"
+  },
+  "dependencies": {
+    "axios": "^1.6.5",
+    "qrcode": "^1.5.4",
+    "roboflex-thalamus-request-handler": "^1.0.13",
+    "roboflex-thalamus-sso-lib": "^1.0.6",
+    "roboflex-thalamus-utils-lib": "^1.0.5",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.3.5"
+  }
+}

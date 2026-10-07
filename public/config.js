@@ -1,7 +1,10 @@
 /*
  * ARQUIVO DE CONTEÚDO DO MURAL
  * Edite apenas os valores abaixo. Para fotos locais, coloque os arquivos
- * dentro de assets/ e informe o caminho, por exemplo: "assets/minha-foto.jpg".
+ * dentro de public/assets/ e informe o caminho, por exemplo: "assets/minha-foto.jpg".
+ *
+ * A TV mostra o mural ativo salvo no painel (/#/painel).
+ * Este arquivo guarda o texto dos quadros fixos (valores, calendário, agenda…).
  */
 window.MURAL_CONFIG = {
   atualizadoEm: "25/09/2026",
@@ -15,8 +18,9 @@ window.MURAL_CONFIG = {
 
   integracaoApi: {
     ativa: true,
-    endpointAniversariantes: "https://api.thalamus.ind.br/api/pessoas/aniversariantes",
-    baseImagens: "https://api.thalamus.ind.br/storage/",
+    // Sem estes dois campos, usa a API do ambiente do build (.env.production / .env.staging).
+    // endpointAniversariantes: "https://api.thalamus.ind.br/api/pessoas/aniversariantes",
+    // baseImagens: "https://api.thalamus.ind.br/storage/",
     mesAutomatico: true,       // true = usa o mês atual da TV
     mes: 9,                    // usado apenas quando mesAutomatico for false
     atualizarACadaMs: 3600000, // consulta novamente a cada 1 hora
@@ -32,27 +36,43 @@ window.MURAL_CONFIG = {
   },
 
   /*
-   * QUADRADOS DA TELA PRINCIPAL
-   * - A ordem abaixo é a ordem exibida no mural.
-   * - Use ativo: false para ocultar um quadrado.
-   * - Para trocar um quadrado, altere apenas o seu "tipo".
+   * INTERAÇÃO POR TOQUE (PC touchscreen com Chrome em modo --kiosk)
+   * - Arrastar para o lado: muda de página (esquerda = próxima, direita = anterior).
+   * - Toque num quadro: amplia o quadro e pausa a troca automática.
+   * - Toque de novo (ou arrastar): volta ao mural.
+   * - Toque duplo em qualquer lugar: fecha o mural (fecha o Chrome).
+   * - Os QR codes não abrem links ao toque (uma aba nova esconderia o mural).
+   * Use ativa: false para desligar todos os gestos.
    *
-   * Tipos disponíveis:
-   * aniversariantes, tempoDeCasa, valores, cipa, seguranca,
-   * calendario, atencao, saude, noticias e agenda.
+   * FECHAMENTO DO CHROME: a página tenta fechar a própria janela e, ao mesmo
+   * tempo, troca o título da aba para "tituloFechamento". O script
+   * kiosk/iniciar-mural.ps1 (que inicia o Chrome no PC) observa esse título e
+   * fecha o Chrome mesmo quando o navegador não permite fechar via script.
    */
-  quadrados: [
-    { tipo: "aniversariantes", ativo: true },
-    { tipo: "tempoDeCasa", ativo: true },
-    { tipo: "valores", ativo: true },
-    { tipo: "cipa", ativo: true },
-    { tipo: "seguranca", ativo: true },
-    { tipo: "calendario", ativo: true },
-    { tipo: "atencao", ativo: true },
-    { tipo: "saude", ativo: true },
-    { tipo: "noticias", ativo: true },
-    { tipo: "agenda", ativo: true }
-  ],
+  interacao: {
+    ativa: true,
+    fecharComDuploToque: true,
+    distanciaMinimaArrastePx: 80,   // quanto precisa arrastar para contar como troca de página
+    intervaloDuploToqueMs: 350,     // tempo máximo entre dois toques para contar como duplo
+    duracaoAvisoMs: 4000,           // por quanto tempo o aviso fica na tela
+    mensagemAjuda: "Toque em um quadro para ampliar · Arraste para mudar de página · Toque duas vezes para fechar",
+    mensagemAmpliar: "Toque de novo para voltar",
+    duracaoAmpliacaoMs: 20000,      // a ampliação fecha sozinha depois desse tempo
+    mensagemFechando: "Fechando o mural…",
+    mensagemFalhaFechar: "Não foi possível fechar o mural automaticamente. Avise o responsável.",
+    tituloFechamento: "FECHAR_MURAL", // deve ser igual ao -TituloFechamento do kiosk/iniciar-mural.ps1
+    tempoLimiteFechamentoMs: 6000    // tempo de espera antes de mostrar mensagemFalhaFechar
+  },
+
+  /*
+   * A TV busca o mural ativo, sem token. ?mural=ID fixa um mural específico.
+   * Sem mural ativo, a TV avisa em vez de montar um layout escondido.
+   */
+  layoutRemoto: {
+    ativa: true,
+    // endpoint: "https://api.thalamus.ind.br/api/mural/publico",
+    atualizarACadaMs: 300000   // busca alterações do painel a cada 5 minutos
+  },
 
   aniversariantes: {
     mesReferencia: "",
@@ -63,8 +83,6 @@ window.MURAL_CONFIG = {
   },
 
   tempoDeCasa: {
-    tituloDestaque: "TEMPO",
-    subtitulo: "Histórias que crescem junto com a Roboflex.",
     pessoas: []
   },
 
@@ -88,12 +106,12 @@ window.MURAL_CONFIG = {
 
   cipa: {
     titulo: "CIPA 2026/2027",
-    // IDs e meses usados para localizar cada integrante na API de aniversariantes.
+    // IDs das pessoas; vêm na mesma chamada dos aniversariantes (?ids=).
     integrantesApi: [
-      { id: 113, mes: 3 },
-      { id: 212, mes: 2 },
-      { id: 130, mes: 4 },
-      { id: 121, mes: 12 }
+      { id: 113 },
+      { id: 212 },
+      { id: 130 },
+      { id: 121 }
     ],
     integrantes: [],
     chamada: {
@@ -220,6 +238,7 @@ window.MURAL_CONFIG = {
   marca: {
     nomeRoboflex: "roboflex",
     logoRoboflex: "assets/logo-roboflex.png",
+    logoTitulo: "assets/logo-roboflex-clara.png",
     logoZontec: "assets/logo-zontec.svg"
   }
 };
