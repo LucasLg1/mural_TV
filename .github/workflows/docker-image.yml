@@ -2,14 +2,17 @@ name: Docker Image CI
 
 on:
   push:
-    branches: ["homologacao"]
+    branches: ["producao", "homologacao"]
+  pull_request:
+    branches: ["producao", "homologacao"]
   workflow_dispatch:
 
 env:
-  KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_HML }}
-  NAMESPACE: thalamus-hml
+  KUBE_CONFIG: ${{ github.ref_name == 'producao' && secrets.KUBE_CONFIG || secrets.KUBE_CONFIG_HML }}
+  NAMESPACE: ${{ github.ref_name == 'producao' && 'thalamus-prd' || 'thalamus-hml' }}
+  AMBIENTE: ${{ github.ref_name == 'producao' && 'production' || 'staging' }}
   IMAGE_NAME: devroboflex/thalamus-mural-tv
-  IMAGE_TAG: hml
+  IMAGE_TAG: ${{ github.ref_name == 'producao' && 'latest' || 'hml' }}
 
 jobs:
   build-deploy:
@@ -25,7 +28,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build imagem Docker
-        run: docker build . --build-arg AMBIENTE=staging -t "${IMAGE_NAME}:${IMAGE_TAG}"
+        run: docker build . --build-arg AMBIENTE=${{ env.AMBIENTE }} -t "${IMAGE_NAME}:${IMAGE_TAG}"
 
       - name: Push imagem Docker
         run: docker push "${IMAGE_NAME}:${IMAGE_TAG}"
@@ -33,7 +36,7 @@ jobs:
       - name: Configurar kubeconfig
         run: |
           mkdir -p "$HOME/.kube"
-          printf '%s' "$KUBE_CONFIG" > "$HOME/.kube/config"
+          echo "${{ env.KUBE_CONFIG }}" > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
 
       - name: Instalar kubectl
