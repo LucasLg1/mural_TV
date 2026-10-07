@@ -5,23 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark">
   <title>Mural Digital Roboflex</title>
-  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="space-background" aria-hidden="true">
-    <div class="aurora aurora-one"></div>
-    <div class="aurora aurora-two"></div>
-    <div id="stars" class="stars"></div>
-  </div>
-
-  <main id="app" aria-live="polite"></main>
-  <div id="debug-panel" class="debug-panel" hidden></div>
-
+  <div id="app"></div>
   <noscript>Este mural precisa de JavaScript ativado para funcionar.</noscript>
 
-  <!-- qrcodejs 1.0.0 (MIT) é servido localmente para funcionar sem CDN. -->
-  <script src="libs/qrcode.min.js"></script>
-  <script src="config.js"></script>
-  <script src="script.js"></script>
+  <!-- Conteúdo editável sem recompilar: public/config.js -->
+  <script vite-ignore src="./config.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
