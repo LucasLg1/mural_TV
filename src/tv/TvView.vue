@@ -3,21 +3,17 @@
     <div class="space-background" aria-hidden="true"></div>
 
     <main class="mural-screens" :class="{ 'is-fading': trocando }">
-      <div
-        v-for="(tela, indice) in telas"
-        v-show="atual === tela.id"
-        :key="tela.id"
-        class="screen-slot"
-        :data-screen="tela.id"
-      >
-        <TelaLayout
-          :tela="tela"
-          :indice="indice"
-          :total="telas.length"
-          :foco-id="atual === tela.id ? focoId : null"
-        />
-      </div>
-      <div v-if="celebrando.length" v-show="atual === CELEBRACAO" class="screen-slot" :data-screen="CELEBRACAO">
+      <template v-for="(tela, indice) in telas" :key="tela.id">
+        <div v-if="atual === tela.id" class="screen-slot" :data-screen="tela.id">
+          <TelaLayout
+            :tela="tela"
+            :indice="indice"
+            :total="telas.length"
+            :foco-id="atual === tela.id ? focoId : null"
+          />
+        </div>
+      </template>
+      <div v-if="celebrando.length && atual === CELEBRACAO" class="screen-slot" :data-screen="CELEBRACAO">
         <CelebracaoTela :pessoas="celebrando" />
       </div>
     </main>
@@ -83,6 +79,7 @@ let esperaAviso = null;
 let esperaPontos = null;
 let esperaFoco = null;
 let esperaFechamento = null;
+let esperaFechamentoJanela = null;
 let fechando = false;
 const intervalos = [];
 let removerGestos = null;
@@ -209,13 +206,16 @@ function fecharMural() {
   html.classList.add("is-closing");
   mostrarAviso(interacao.mensagemFechando || "Fechando o mural…", 0);
 
-  // O kiosk/iniciar-mural.ps1 observa este título e fecha o Chrome.
+  // O kiosk/iniciar-mural.ps1 observa este título e fecha o Chrome. Fechar a janela
+  // antes de ele ler o título faz o script achar que o Chrome caiu e reabrir.
   document.title = interacao.tituloFechamento || "FECHAR_MURAL";
-  try {
-    window.close();
-  } catch {
-    // O Chrome bloqueia window.close() em janelas que não foram abertas por script.
-  }
+  esperaFechamentoJanela = setTimeout(() => {
+    try {
+      window.close();
+    } catch {
+      // O Chrome bloqueia window.close() em janelas que não foram abertas por script.
+    }
+  }, 3000);
 
   esperaFechamento = setTimeout(() => {
     fechando = false;
@@ -319,7 +319,7 @@ onBeforeUnmount(() => {
   removerGestos?.();
   temporizador.limpar();
   intervalos.forEach(clearInterval);
-  [esperaTroca, esperaAviso, esperaPontos, esperaFoco, esperaFechamento].forEach(clearTimeout);
+  [esperaTroca, esperaAviso, esperaPontos, esperaFoco, esperaFechamento, esperaFechamentoJanela].forEach(clearTimeout);
   document.removeEventListener("visibilitychange", aoMudarVisibilidade);
   window.removeEventListener("keydown", aoTeclar);
   html.classList.remove("tv-performance", "touch-enabled", "page-hidden", "is-closing");

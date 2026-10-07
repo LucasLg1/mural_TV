@@ -1,7 +1,7 @@
 import { reactive } from "vue";
 import { enderecos, muralConfig, aniversarioSimulado } from "./config";
 import { aniversariantesDeHoje, statusAniversario } from "./aniversario";
-import { MESES, normalizar, urlStorage } from "./utils";
+import { MESES, normalizar, urlSegura, urlStorage } from "./utils";
 
 const api = muralConfig.integracaoApi || {};
 
@@ -18,6 +18,19 @@ export const pessoas = reactive({
 
 function foto(caminho) {
   return urlStorage(caminho, enderecos.storage);
+}
+
+const fotosPedidas = new Set();
+
+function precarregarFotos(lista) {
+  lista.forEach((pessoa) => {
+    const url = pessoa?.foto;
+    if (!url || fotosPedidas.has(url) || !urlSegura(url)) return;
+    fotosPedidas.add(url);
+    const imagem = new Image();
+    imagem.decoding = "async";
+    imagem.src = url;
+  });
 }
 
 function pessoaDoAniversario(pessoa, mes) {
@@ -100,15 +113,19 @@ export async function carregarPessoas(idsExtras = []) {
       const corpo = await buscarMes(mes, ids, signal);
       const mesResposta = Number(corpo.mes) || mes;
 
-      pessoas.aniversariantes = corpo.aniversariantes
+      const aniversariantes = corpo.aniversariantes
         .map((pessoa) => pessoaDoAniversario(pessoa, mesResposta))
         .filter((pessoa) => pessoa.nome && Number.isInteger(pessoa.dia));
-      if (Array.isArray(corpo.tempoCasa)) {
-        pessoas.tempoCasa = corpo.tempoCasa.map(pessoaDoTempoDeCasa).filter((pessoa) => pessoa.nome);
-      }
-      registrarPorId(pessoas.aniversariantes);
+      const tempoCasa = Array.isArray(corpo.tempoCasa)
+        ? corpo.tempoCasa.map(pessoaDoTempoDeCasa).filter((pessoa) => pessoa.nome)
+        : pessoas.tempoCasa;
+      const porId = Array.isArray(corpo.pessoas) ? corpo.pessoas.map(pessoaPorId) : [];
+      precarregarFotos([...aniversariantes, ...tempoCasa, ...porId]);
 
-      if (Array.isArray(corpo.pessoas)) registrarPorId(corpo.pessoas.map(pessoaPorId));
+      pessoas.aniversariantes = aniversariantes;
+      if (Array.isArray(corpo.tempoCasa)) pessoas.tempoCasa = tempoCasa;
+      registrarPorId(pessoas.aniversariantes);
+      if (porId.length) registrarPorId(porId);
 
       const nomeMes = MESES[mesResposta - 1];
       if (nomeMes) pessoas.mesReferencia = nomeMes.toUpperCase();
