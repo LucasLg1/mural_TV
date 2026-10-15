@@ -1,6 +1,7 @@
 import { reactive } from "vue";
 import { enderecos, muralConfig, aniversarioSimulado } from "./config";
 import { aniversariantesDeHoje, statusAniversario } from "./aniversario";
+import { aquecerFotos } from "./cacheFotos";
 import { MESES, normalizar, urlSegura, urlStorage } from "./utils";
 
 const api = muralConfig.integracaoApi || {};
@@ -23,14 +24,15 @@ function foto(caminho) {
 const fotosPedidas = new Set();
 
 function precarregarFotos(lista) {
+  const novas = [];
   lista.forEach((pessoa) => {
     const url = pessoa?.foto;
     if (!url || fotosPedidas.has(url) || !urlSegura(url)) return;
     fotosPedidas.add(url);
-    const imagem = new Image();
-    imagem.decoding = "async";
-    imagem.src = url;
+    novas.push(url);
   });
+  // Espera a tela visível pedir as fotos dela antes de aquecer o restante.
+  if (novas.length) setTimeout(() => aquecerFotos(novas), 1200);
 }
 
 function pessoaDoAniversario(pessoa, mes) {
