@@ -1,6 +1,49 @@
 import { fileURLToPath, URL } from "node:url";
+import { build as empacotar } from "esbuild";
 import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
+
+const entradaSw = fileURLToPath(new URL("./src/sw-fotos.js", import.meta.url));
+
+function cacheDeFotos() {
+  const gerar = async (minify) => {
+    const resultado = await empacotar({
+      entryPoints: [entradaSw],
+      bundle: true,
+      format: "iife",
+      write: false,
+      platform: "browser",
+      target: "chrome100",
+      minify,
+    });
+    return resultado.outputFiles[0].text;
+  };
+
+  const servir = async (req, res, next) => {
+    if (req.url?.split("?")[0] !== "/sw-fotos.js") return next();
+    try {
+      const codigo = await gerar(false);
+      res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache");
+      res.end(codigo);
+    } catch (erro) {
+      next(erro);
+    }
+  };
+
+  return {
+    name: "cache-de-fotos",
+    configureServer(server) {
+      server.middlewares.use(servir);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(servir);
+    },
+    async generateBundle() {
+      this.emitFile({ type: "asset", fileName: "sw-fotos.js", source: await gerar(true) });
+    },
+  };
+}
 
 // As bibliotecas do Thalamus (SSO e request-handler) leem process.env.VUE_APP_*,
 // então os .env usam os mesmos nomes dos outros frontends do Thalamus.
@@ -13,7 +56,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: "./",
-    plugins: [vue()],
+    plugins: [vue(), cacheDeFotos()],
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },

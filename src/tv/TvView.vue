@@ -46,6 +46,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import CelebracaoTela from "@/components/CelebracaoTela.vue";
 import TelaLayout from "@/components/TelaLayout.vue";
+import { registrarCacheDeFotos } from "@/shared/cacheFotos";
 import { aniversarioSimulado, modoDebug, modoDesempenho, muralConfig, muralDaTv, tempos } from "@/shared/config";
 import { aniversariantesAtivos, carregarPessoas, pessoas } from "@/shared/pessoas";
 import { instalarGestos } from "./gestos";
@@ -296,7 +297,7 @@ onMounted(async () => {
     });
   }
 
-  await carregarLayout();
+  await Promise.all([registrarCacheDeFotos(), carregarLayout()]);
   const pessoasCarregadas = carregarPessoas(idsDaCipa());
 
   if (modoDebug && aniversarioSimulado) await pessoasCarregadas;
