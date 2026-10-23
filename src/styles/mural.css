@@ -1211,6 +1211,17 @@ body { color: var(--ink); }
 .layout-block.is-focused .news-block-copy h2 { font-size: clamp(26px, 2.4cqw, 48px); }
 .layout-block.is-focused .news-block-copy p { font-size: clamp(15px, 1.15cqw, 24px); -webkit-line-clamp: 20; line-clamp: 20; }
 
+/* No zoom a moldura muda de proporção. A imagem inteira aparece, sem cortar topo e base. */
+.layout-block.is-focused .media-frame > img,
+.layout-block.is-focused .media-frame > video,
+.layout-block.is-focused .news-block-media > img,
+.layout-block.is-focused .news-block-media > video,
+.layout-block.is-focused .carousel-image,
+.layout-block.is-focused .event-video {
+  object-fit: contain;
+  object-position: center;
+}
+
 /* Indicador de páginas: aparece rapidamente quando alguém toca ou arrasta. */
 .page-dots {
   position: absolute;

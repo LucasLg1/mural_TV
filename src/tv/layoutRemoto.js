@@ -1,5 +1,5 @@
 import { enderecos } from "@/shared/config";
-import { enderecoVisivel } from "@/shared/rede";
+import { enderecoDeStorage } from "@/shared/rede";
 
 /**
  * Busca as telas salvas no painel. Sem id, a API devolve o mural ativo
@@ -46,7 +46,7 @@ export async function buscarLayoutRemoto(muralId, tempoLimiteMs = 10000) {
 }
 
 function ajustarEnderecos(valor) {
-  if (typeof valor === "string") return enderecoVisivel(valor, window.location);
+  if (typeof valor === "string") return enderecoDeStorage(valor, window.location, enderecos.midia);
   if (Array.isArray(valor)) return valor.map(ajustarEnderecos);
   if (valor && typeof valor === "object") {
     return Object.fromEntries(Object.entries(valor).map(([chave, item]) => [chave, ajustarEnderecos(item)]));
